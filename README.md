@@ -1,9 +1,9 @@
 <div align="center">
 
-# HolyricsExtractor — ¡Extrae y formatea letras para Holyrics!
+# HolyricsExtractor
 
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](https://www.gnu.org/licenses/gpl-3.0.txt)
-[![Release](https://img.shields.io/badge/Version-v1.0.0--stable-blue?style=flat)](https://github.com/xorodev/HolyricsExtractor/releases/tag/v1.0.0-stable)
+[![Release](https://img.shields.io/badge/Version-v1.0.1--stable-blue?style=flat)](https://github.com/xorodev/HolyricsExtractor/releases/tag/v1.0.0-stable)
 ![Platform](https://img.shields.io/badge/Platform-Windows-4361EE?logo=windows&logoColor=white&style=flat)
 ![Python](https://img.shields.io/badge/Python-3.14%2B-3776AB?logo=python&logoColor=white&style=flat)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat)
