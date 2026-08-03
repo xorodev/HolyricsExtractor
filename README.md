@@ -13,7 +13,7 @@
 
 <div align="center">
   <img 
-    src="icon.ico"
+    src="./src/img/icon.ico"
     alt="HolyricsExtractor Logo"
     width="160"
     style="border: 2px solid #89b4fa; border-radius: 20px; padding: 15px; background: #1e1e2e;"
