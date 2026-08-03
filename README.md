@@ -1,6 +1,6 @@
 <div align="center">
 
-# HolyricsExtractor — Extrae y formatea letras para Holyrics!
+# HolyricsExtractor — ¡Extrae y formatea letras para Holyrics!
 
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat)](https://www.gnu.org/licenses/gpl-3.0.txt)
 [![Release](https://img.shields.io/badge/Version-v1.0.0--stable-blue?style=flat)](https://github.com/xorodev/HolyricsExtractor/releases/tag/v1.0.0-stable)
