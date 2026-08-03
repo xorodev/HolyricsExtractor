@@ -730,7 +730,7 @@ class HolyricsApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.official_version = "v1.0.1-stable"
+        self.official_version = "v1.0.2-stable"
 
         self.logger = ApplicationLogger()
         self.app_config = ConfigurationManager(self.logger)
@@ -776,7 +776,7 @@ class HolyricsApp(tk.Tk):
         options_menu.add_command(label="⚙️ Ajustes", command=self.open_settings_dialog)
         options_menu.add_command(label="🔄 Actualizar yt-dlp", command=self.start_yt_dlp_update_thread)
         options_menu.add_separator()
-        options_menu.add_command(label="❌ Salir", command=self.on_close)
+        options_menu.add_command(label="❌ Salir del programa", command=self.on_close)
         menubar.add_cascade(label="Opciones", menu=options_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -819,6 +819,21 @@ class HolyricsApp(tk.Tk):
         self.entry_query = ttk.Entry(form_frame, font=("Segoe UI", 10))
         self.entry_query.pack(fill="x", pady=(0, 12))
         self.entry_query.bind("<Return>", lambda event: self.start_processing_thread())
+
+        self.btn_paste = tk.Button(
+            form_frame,
+            text="Pegar enlace desde el portapapeles",
+            font=("Segoe UI", 9, "bold"),
+            bg="#585b70",
+            fg="#cdd6f4",
+            activebackground="#6c7086",
+            relief="flat",
+            cursor="hand2",
+            padx=8, pady=6,
+            command=self.paste_from_clipboard
+        )
+        self.btn_paste.pack(fill="x", pady=(0, 12))
+        bind_hover_effect(self.btn_paste, "#585b70", "#6c7086")
 
         tk.Label(
             form_frame,
@@ -1049,7 +1064,7 @@ class HolyricsApp(tk.Tk):
         if latest_tag == self.official_version:
             messagebox.showinfo(
                 "Aplicación actualizada",
-                f"Ya tienes instalada la última versión disponible: '{self.official_version}'"
+                f"Ya tiene instalada la última versión disponible: '{self.official_version}'"
             )
             return
         self.confirm_and_start_app_update(latest_tag, download_url)
@@ -1218,6 +1233,40 @@ class HolyricsApp(tk.Tk):
             f"Detalles técnicos: {error_message}\n\n"
             "Los detalles han sido registrados en el archivo de registros de la aplicación."
         )
+
+    def paste_from_clipboard(self):
+        try:
+            clipboard_content = self.clipboard_get().strip()
+        except tk.TclError:
+            self.logger.write_log("WARNING", "User attempted clipboard paste with empty or invalid clipboard.")
+            messagebox.showwarning(
+                "Portapapeles vacío",
+                "No se encontró ningún contenido de texto válido en el portapapeles para pegar..."
+            )
+            return
+
+        if not clipboard_content:
+            self.logger.write_log("WARNING", "User attempted clipboard paste with empty clipboard content.")
+            messagebox.showwarning(
+                "Portapapeles vacío",
+                "No se encontró ningún contenido de texto válido en el portapapeles para pegar..."
+            )
+            return
+
+        if not self.service.is_youtube_url(clipboard_content):
+            self.logger.write_log("WARNING", f"Clipboard content rejected as invalid YouTube URL: '{clipboard_content}'")
+            messagebox.showwarning(
+                "Enlace no válido",
+                "El contenido copiado no corresponde a un enlace (URL) de YouTube válido.\n\n"
+                "Solo se aceptan enlaces de YouTube. "
+                "¡Verifique el enlace copiado que sea de YouTube e inténtelo nuevamente!"
+            )
+            return
+
+        self.entry_query.delete(0, tk.END)
+        self.entry_query.insert(0, clipboard_content)
+        self.logger.write_log("INFO", "Clipboard content pasted successfully into query field.")
+        self.lbl_status.config(text="Estado de operación: Enlace pegado desde el portapapeles correctamente.")
 
     def copy_to_clipboard(self):
         if self.formatted_result:
