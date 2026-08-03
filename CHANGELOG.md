@@ -4,6 +4,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
+## 🛠 Cambios en esta versión — v1.0.2-stable (2026-08-03)
+
+Esta actualización introduce la función de pegado rápido desde el portapapeles con validación automática de enlaces de YouTube, mejorando la agilidad en la búsqueda de letras.
+
+### 🚀 Novedades
+- **Botón "Pegar enlace desde el portapapeles":** Se integró un botón de acción rápida que permite pegar enlaces directamente con un solo clic, agilizando el flujo de trabajo del usuario.
+- **Validación inteligente del portapapeles:** El sistema verifica automáticamente que el contenido copiado corresponda a una URL válida de YouTube antes de insertarla, mostrando advertencias en pantalla si el portapapeles está vacío o incluye texto no compatible.
+
+### ✨ Mejoras
+- **Coherencia en la interfaz y auditoría:** Se aplicó el efecto visual interactivo (*hover*) al nuevo botón para alinearlo con el diseño de la aplicación, y se incorporó el registro de eventos del portapapeles en el sistema de logs.
+
+---
+
 ## 🛠 Cambios en esta versión — v1.0.1-stable (2026-08-03)
 
 Esta actualización se enfoca en mejorar la organización de las diapositivas generadas y en dar mayor claridad sobre el estado de las actualizaciones de la aplicación.
