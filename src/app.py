@@ -208,7 +208,7 @@ class UpdateManager:
         try:
             response = self.session.get(download_url, timeout=90, stream=True)
             if response.status_code != 200:
-                message = f"El servidor de descargas respondió con el código {response.status_code}."
+                message = f"El servidor de descargas respondió con el código: {response.status_code}"
                 self.logger.write_log("ALERT", message)
                 return False, message
 
@@ -239,7 +239,7 @@ class UpdateManager:
                 except OSError:
                     pass
 
-        self.logger.write_log("INFO", f"yt-dlp updated successfully to version {latest_version}.")
+        self.logger.write_log("INFO", f"yt-dlp updated successfully to version: {latest_version}")
         return True, latest_version
 
     def is_frozen(self):
@@ -270,7 +270,7 @@ class UpdateManager:
         try:
             response = self.session.get(download_url, timeout=180, stream=True)
             if response.status_code != 200:
-                raise RuntimeError(f"El servidor de descargas respondió con el código {response.status_code}.")
+                raise RuntimeError(f"El servidor de descargas respondió con el código: {response.status_code}")
 
             total = int(response.headers.get("Content-Length", 0))
             downloaded = 0
@@ -447,26 +447,81 @@ class LyricsService:
 
     def format_stanzas(self, text):
         lines = [line.strip() for line in text.splitlines()]
-        blocks = []
-        current_block = []
+        stanzas = []
+        current_stanza = []
 
         for line in lines:
             if line:
-                current_block.append(line)
+                current_stanza.append(line)
             else:
-                if current_block:
-                    blocks.append("\n".join(current_block))
-                    current_block = []
+                if current_stanza:
+                    stanzas.append(current_stanza)
+                    current_stanza = []
 
-        if current_block:
-            blocks.append("\n".join(current_block))
+        if current_stanza:
+            stanzas.append(current_stanza)
 
-        if len(blocks) == 1 and len(lines) > 5:
-            blocks = []
-            for i in range(0, len(lines), 4):
-                blocks.append("\n".join(lines[i:i + 4]))
+        if len(stanzas) == 1 and len(lines) > 5:
+            stanzas = [lines[i:i + 4] for i in range(0, len(lines), 4) if lines[i:i + 4]]
 
+        slides = []
+        for stanza in stanzas:
+            slides.extend(self._split_stanza_into_slides(stanza))
+
+        slides = self._mark_repeated_slides(slides)
+
+        blocks = ["\n".join(slide) for slide in slides]
         return "\n\n".join(blocks), len(blocks)
+
+    def _split_stanza_into_slides(self, stanza_lines, min_size=4, max_size=5):
+        total = len(stanza_lines)
+        if total <= max_size:
+            return [stanza_lines]
+
+        sizes = None
+        for num_groups in range(1, (total // min_size) + 2):
+            if num_groups * min_size <= total <= num_groups * max_size:
+                base = total // num_groups
+                remainder = total % num_groups
+                sizes = [base + 1 if i < remainder else base for i in range(num_groups)]
+                break
+
+        if sizes is None:
+            num_groups = max(1, round(total / ((min_size + max_size) / 2)))
+            base = total // num_groups
+            remainder = total % num_groups
+            sizes = [base + 1 if i < remainder else base for i in range(num_groups)]
+
+        slides = []
+        index = 0
+        for size in sizes:
+            slides.append(stanza_lines[index:index + size])
+            index += size
+        return slides
+
+    def _mark_repeated_slides(self, slides):
+        first_seen_index = {}
+        slides_to_mark = set()
+        slides_to_skip = set()
+
+        for index, slide in enumerate(slides):
+            key = "\n".join(line.casefold() for line in slide)
+            if key in first_seen_index:
+                slides_to_mark.add(first_seen_index[key])
+                slides_to_skip.add(index)
+            else:
+                first_seen_index[key] = index
+
+        result = []
+        for index, slide in enumerate(slides):
+            if index in slides_to_skip:
+                continue
+            if index in slides_to_mark:
+                slide = list(slide)
+                slide[0] = f"// {slide[0]}"
+                slide[-1] = f"{slide[-1]} //"
+            result.append(slide)
+        return result
 
 
 def bind_hover_effect(widget, normal_bg, hover_bg):
@@ -675,7 +730,7 @@ class HolyricsApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.official_version = "v1.0.0-stable"
+        self.official_version = "v1.0.1-stable"
 
         self.logger = ApplicationLogger()
         self.app_config = ConfigurationManager(self.logger)
@@ -869,6 +924,14 @@ class HolyricsApp(tk.Tk):
         self.txt_preview.pack(fill="both", expand=True)
 
     def check_first_run_and_updates(self):
+        pending_version = self.app_config.get("pending_update_confirmation")
+        if pending_version:
+            self.app_config.set("pending_update_confirmation", None)
+            messagebox.showinfo(
+                "Actualización completada",
+                f"¡Ya se ha instalado la última versión estable correctamente!\nVersión instalada en el sistema: '{pending_version}'"
+            )
+
         if self.app_config.get("first_run", True):
             answer = messagebox.askyesno(
                 "Notificación de actualización",
@@ -1000,23 +1063,23 @@ class HolyricsApp(tk.Tk):
             "¿Desea descargarla e instalarla ahora? La aplicación se reiniciará automáticamente al finalizar."
         )
         if answer:
-            self.start_app_update_download_thread(download_url)
+            self.start_app_update_download_thread(latest_tag, download_url)
 
-    def start_app_update_download_thread(self, download_url):
+    def start_app_update_download_thread(self, latest_tag, download_url):
         self.set_ui_state(True)
         self.progress_bar.config(mode="determinate", maximum=100, value=0)
         self.lbl_status.config(text="Estado de operación: Descargando la nueva versión (0%)...")
-        thread = threading.Thread(target=self.execute_app_update_download, args=(download_url,), daemon=True)
+        thread = threading.Thread(target=self.execute_app_update_download, args=(latest_tag, download_url), daemon=True)
         thread.start()
 
-    def execute_app_update_download(self, download_url):
+    def execute_app_update_download(self, latest_tag, download_url):
         def report_progress(downloaded, total):
             percent = int((downloaded / total) * 100) if total else 0
             self.after(0, self.update_app_download_progress, percent)
 
         try:
             new_exe_path = self.update_manager.download_new_build(download_url, progress_callback=report_progress)
-            self.after(0, self.finalize_app_update, new_exe_path)
+            self.after(0, self.finalize_app_update, latest_tag, new_exe_path)
         except Exception as error:
             self.logger.write_log("ALERT", f"Application self-update download failed: {str(error)}")
             self.after(0, self.handle_app_update_failure, str(error))
@@ -1025,13 +1088,14 @@ class HolyricsApp(tk.Tk):
         self.progress_bar.config(value=percent)
         self.lbl_status.config(text=f"Estado de operación: Descargando la nueva versión ({percent}%)...")
 
-    def finalize_app_update(self, new_exe_path):
+    def finalize_app_update(self, latest_tag, new_exe_path):
         self.set_ui_state(False)
         self.progress_bar.config(mode="indeterminate")
         messagebox.showinfo(
             "Actualización lista",
             "La nueva versión se descargó correctamente.\nLa aplicación se cerrará y se reiniciará automáticamente para completar la instalación."
         )
+        self.app_config.set("pending_update_confirmation", latest_tag)
         self.logger.write_log("INFO", "Application self-update download complete. Relaunching with new build.")
         self.update_manager.apply_self_update_and_relaunch(new_exe_path)
         self.destroy()
