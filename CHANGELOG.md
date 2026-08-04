@@ -4,6 +4,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
+## 🛠 Cambios en esta versión — v1.0.3-stable (2026-08-03)
+
+Esta actualización es un parche de estabilidad enfocado en perfeccionar el mecanismo de auto-actualización en ejecutables empaquetados con PyInstaller, garantizando una transición totalmente silenciosa y sin advertencias entre versiones.
+
+### 🐛 Correcciones de errores
+- **Aislamiento de entorno PyInstaller (`_MEIPASS2`):** Se incorporó la limpieza de la variable de entorno `_MEIPASS2` en el script ejecutable de actualización en lote (`.bat`), previniendo que la nueva versión herede la carpeta temporal del proceso anterior y asegurando la carga limpia de módulos dinámicos nativos.
+- **Sincronización en la liberación de procesos:** Se reubicó la pausa de retardo dentro de la sección de reemplazo exitoso (`:replace_ok`), otorgando el tiempo necesario al sistema operativo para liberar los descriptores de archivos antes de iniciar el nuevo ejecutable.
+
+---
+
 ## 🛠 Cambios en esta versión — v1.0.2-stable (2026-08-03)
 
 Esta actualización introduce la función de pegado rápido desde el portapapeles con validación automática de enlaces de YouTube, mejorando la agilidad en la búsqueda de letras.
