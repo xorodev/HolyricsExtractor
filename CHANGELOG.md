@@ -4,6 +4,23 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
+## 🛠 Cambios en esta versión — v1.0.4-stable (2026-08-03)
+
+Esta actualización introduce el sistema de historial persistente de búsquedas recientes, atajos de teclado globales para agilizar el flujo de trabajo y mejoras en la separación estructural de diapositivas al exportar archivos.
+
+### 🚀 Novedades
+- **Historial de búsquedas recientes:** Se integró un menú dinámico en la barra superior que guarda persistentemente hasta las últimas 10 canciones procesadas en `config.json`. Permite recargar instantáneamente el contenido procesado y previsualizado previamente sin necesidad de consultar la API nuevamente.
+- **Limpieza del historial:** Opción dedicada dentro del menú para vaciar y restablecer todo el registro de búsquedas guardadas a voluntad del usuario.
+- **Atajos de teclado rápidos (Shortcuts):**
+  - `Ctrl + S`: Exportación rápida del resultado generado a archivo de texto (`.txt`).
+  - `Ctrl + Shift + C`: Copiado instantáneo de las presentaciones estructuradas al portapapeles.
+  - `Ctrl + Shift + V`: Pegado automático del contenido del portapapeles con inicio inmediato del proceso de búsqueda.
+
+### ✨ Mejoras
+- **Formato estandarizado de exportación:** Se implementó un delimitador uniforme (`--------------`) entre bloques al guardar los archivos `.txt`, facilitando la lectura externa e importación de diapositivas en Holyrics.
+
+---
+
 ## 🛠 Cambios en esta versión — v1.0.3-stable (2026-08-03)
 
 Esta actualización es un parche de estabilidad enfocado en perfeccionar el mecanismo de auto-actualización en ejecutables empaquetados con PyInstaller, garantizando una transición totalmente silenciosa y sin advertencias entre versiones.
