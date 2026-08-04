@@ -304,6 +304,7 @@ class UpdateManager:
         script_path = os.path.join(tempfile.gettempdir(), "holyrics_app_updater.bat")
         script_content = (
             "@echo off\n"
+            "set _MEIPASS2=\n"
             f'set "CURRENT_EXE={current_exe}"\n'
             f'set "NEW_EXE={new_exe_path}"\n'
             f'set "BACKUP_NAME={backup_name}"\n'
@@ -321,6 +322,7 @@ class UpdateManager:
             ":replace_ok\n"
             'move /y "%NEW_EXE%" "%CURRENT_EXE%" >nul 2>&1\n'
             'del "%BACKUP_FULL%" >nul 2>&1\n'
+            "ping 127.0.0.1 -n 3 >nul\n"
             'start "" "%CURRENT_EXE%"\n'
             "goto cleanup\n"
             "\n"
@@ -730,7 +732,7 @@ class HolyricsApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.official_version = "v1.0.2-stable"
+        self.official_version = "v1.0.3-stable"
 
         self.logger = ApplicationLogger()
         self.app_config = ConfigurationManager(self.logger)
