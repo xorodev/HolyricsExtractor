@@ -20,12 +20,14 @@
 # b. Telegram: https://t.me/xorodev
 
 import json
+import locale
 import os
 import re
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 import webbrowser
 from datetime import datetime
@@ -72,14 +74,16 @@ class ApplicationLogger:
         self.log_directory = os.path.join(user_documents, "HolyricsExtractor")
         os.makedirs(self.log_directory, exist_ok=True)
         self.log_file_path = os.path.join(self.log_directory, "logs.txt")
+        self._lock = threading.Lock()
 
     def write_log(self, level, message):
         try:
-            self._rotate_if_needed()
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            entry = f"[{timestamp}] [{level}] {message}\n"
-            with open(self.log_file_path, "a", encoding="utf-8") as file:
-                file.write(entry)
+            with self._lock:
+                self._rotate_if_needed()
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                entry = f"[{timestamp}] [{level}] {message}\n"
+                with open(self.log_file_path, "a", encoding="utf-8") as file:
+                    file.write(entry)
         except OSError:
             pass
 
@@ -221,7 +225,15 @@ class UpdateManager:
             if sys.platform != "win32":
                 os.chmod(temp_path, 0o755)
 
-            os.replace(temp_path, self.binary_path)
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    os.replace(temp_path, self.binary_path)
+                    break
+                except PermissionError:
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(0.5)
             temp_path = None
 
         except requests.RequestException as error:
@@ -333,7 +345,8 @@ class UpdateManager:
             ":cleanup\n"
             'del "%~f0" >nul 2>&1\n'
         )
-        with open(script_path, "w", encoding="utf-8") as script_file:
+        batch_encoding = "mbcs" if sys.platform == "win32" else locale.getpreferredencoding()
+        with open(script_path, "w", encoding=batch_encoding) as script_file:
             script_file.write(script_content)
 
         creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -358,6 +371,7 @@ class LyricsService:
         r'(?:https?://)?(?:[\w-]+\.)*(?<![\w-])(?:youtube\.com|youtube-nocookie\.com|youtu\.be)(?:[/?#]|$)',
         re.IGNORECASE,
     )
+    _ARTIST_TITLE_SEPARATOR_RE = re.compile(r'\s+[-–—|]\s+')
 
     def __init__(self, logger, update_manager):
         self.logger = logger
@@ -385,6 +399,12 @@ class LyricsService:
             if title:
                 return title
         return self._resolve_with_library(url)
+
+    def split_title_and_artist(self, title):
+        parts = self._ARTIST_TITLE_SEPARATOR_RE.split(title, maxsplit=1)
+        if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+            return parts[1].strip(), parts[0].strip()
+        return title.strip(), ""
 
     def _resolve_with_binary(self, url):
         try:
@@ -421,21 +441,31 @@ class LyricsService:
             'noplaylist': True,
             'socket_timeout': 10,
         }
-        with yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(url, download=False)
-            raw_title = info.get('title', '') if info else ''
-            return self.clean_title(raw_title)
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(url, download=False)
+                raw_title = info.get('title', '') if info else ''
+                return self.clean_title(raw_title)
+        except yt_dlp.utils.DownloadError as error:
+            self.logger.write_log("WARNING", f"Library-based yt-dlp extraction failed: {str(error)}")
+            return None
 
     def fetch_lyrics(self, track, artist):
         self.logger.write_log("INFO", f"Initiating API request for track: '{track}', artist: '{artist}'")
-        params = {"track_name": track}
         if artist:
-            params["artist_name"] = artist
+            params = {"track_name": track, "artist_name": artist}
+        else:
+            params = {"q": track}
 
         query_string = urllib.parse.urlencode(params)
         endpoint = f"https://lrclib.net/api/search?{query_string}"
 
-        response = self.session.get(endpoint, timeout=8)
+        try:
+            response = self.session.get(endpoint, timeout=8)
+        except requests.RequestException as error:
+            self.logger.write_log("WARNING", f"Lyrics API request failed: {str(error)}")
+            return None
+
         if response.status_code == 200:
             data = response.json()
             if isinstance(data, list):
@@ -448,6 +478,8 @@ class LyricsService:
         return None
 
     def format_stanzas(self, text):
+        if not text:
+            return "", 0
         lines = [line.strip() for line in text.splitlines()]
         stanzas = []
         current_stanza = []
@@ -480,19 +512,10 @@ class LyricsService:
         if total <= max_size:
             return [stanza_lines]
 
-        sizes = None
-        for num_groups in range(1, (total // min_size) + 2):
-            if num_groups * min_size <= total <= num_groups * max_size:
-                base = total // num_groups
-                remainder = total % num_groups
-                sizes = [base + 1 if i < remainder else base for i in range(num_groups)]
-                break
-
-        if sizes is None:
-            num_groups = max(1, round(total / ((min_size + max_size) / 2)))
-            base = total // num_groups
-            remainder = total % num_groups
-            sizes = [base + 1 if i < remainder else base for i in range(num_groups)]
+        num_groups = -(-total // max_size)
+        base = total // num_groups
+        remainder = total % num_groups
+        sizes = [base + 1 if i < remainder else base for i in range(num_groups)]
 
         slides = []
         index = 0
@@ -518,7 +541,7 @@ class LyricsService:
         for index, slide in enumerate(slides):
             if index in slides_to_skip:
                 continue
-            if index in slides_to_mark:
+            if index in slides_to_mark and slide:
                 slide = list(slide)
                 slide[0] = f"// {slide[0]}"
                 slide[-1] = f"{slide[-1]} //"
@@ -534,7 +557,7 @@ def bind_hover_effect(widget, normal_bg, hover_bg):
 class AboutDialog(tk.Toplevel):
     def __init__(self, parent, version):
         super().__init__(parent)
-        self.title("Acerca de - Extractor de Letras")
+        self.title("Acerca del software")
         self.geometry("500x420")
         self.resizable(False, False)
         self.configure(bg="#2b2b3b")
@@ -572,7 +595,7 @@ class AboutDialog(tk.Toplevel):
         desc_lbl.pack(pady=(0, 20))
 
         contact_frame = tk.LabelFrame(
-            self, text=" Contacto del Desarrollador ",
+            self, text=" Licencia y Contacto del Desarrollador ",
             font=("Segoe UI", 10, "bold"), bg="#2b2b3b", fg="#89b4fa", padx=15, pady=15
         )
         contact_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -767,6 +790,7 @@ class HolyricsApp(tk.Tk):
 
         self.setup_menu()
         self.setup_ui()
+        self.setup_hotkeys()
         self.logger.write_log("INFO", "UI rendering completed successfully.")
 
         self.after(500, self.check_first_run_and_updates)
@@ -781,11 +805,20 @@ class HolyricsApp(tk.Tk):
         options_menu.add_command(label="❌ Salir del programa", command=self.on_close)
         menubar.add_cascade(label="Opciones", menu=options_menu)
 
+        self.history_menu = tk.Menu(menubar, tearoff=0)
+        self.refresh_history_menu()
+        menubar.add_cascade(label="Historial", menu=self.history_menu)
+
         help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="ℹ️ Acerca de", command=self.open_about_dialog)
+        help_menu.add_command(label="ⓘ Acerca de", command=self.open_about_dialog)
         menubar.add_cascade(label="Ayuda", menu=help_menu)
 
         self.config(menu=menubar)
+
+    def setup_hotkeys(self):
+        self.bind("<Control-s>", lambda event: self.export_to_file())
+        self.bind("<Control-Shift-C>", lambda event: self.copy_to_clipboard())
+        self.bind("<Control-Shift-V>", lambda event: self.paste_and_process_shortcut())
 
     def setup_ui(self):
         header_frame = tk.Frame(self, bg="#2b2b3b", padx=20, pady=15)
@@ -919,7 +952,7 @@ class HolyricsApp(tk.Tk):
 
         self.lbl_status = tk.Label(
             top_preview_frame,
-            text="Estado de operación: En espera de una entrada",
+            text="Estado de operación: En espera de una entrada.",
             font=("Segoe UI", 9, "italic"),
             bg="#2b2b3b",
             fg="#a6adc8"
@@ -1021,13 +1054,13 @@ class HolyricsApp(tk.Tk):
         self.set_ui_state(False)
         if success:
             new_v = self.update_manager.get_installed_version()
-            self.lbl_status.config(text=f"Estado de operación: yt-dlp actualizado a la versión '{new_v}'")
+            self.lbl_status.config(text=f"Estado de operación: yt-dlp actualizado a la versión: '{new_v}'")
             messagebox.showinfo(
                 "Actualización exitosa",
                 f"El componente yt-dlp ha sido actualizado de forma limpia a la nueva versión: '{new_v}'"
             )
         else:
-            self.lbl_status.config(text="Estado de operación: Fallo al actualizar yt-dlp")
+            self.lbl_status.config(text="Estado de operación: Fallo al actualizar yt-dlp.")
             messagebox.showerror(
                 "Error de actualización",
                 f"No fue posible completar la actualización de yt-dlp.\n\nDetalles técnicos:\n{message}"
@@ -1175,7 +1208,10 @@ class HolyricsApp(tk.Tk):
             target_query = query
             if self.service.is_youtube_url(query):
                 self.logger.write_log("INFO", "Detectado enlace de YouTube en la entrada.")
-                target_query = self.service.resolve_youtube_query(query)
+                resolved_title = self.service.resolve_youtube_query(query)
+                target_query, extracted_artist = self.service.split_title_and_artist(resolved_title)
+                if not artist:
+                    artist = extracted_artist
 
             raw_lyrics = self.service.fetch_lyrics(target_query, artist)
 
@@ -1192,13 +1228,13 @@ class HolyricsApp(tk.Tk):
             self.formatted_result = formatted_text
 
             self.logger.write_log("INFO", f"Extraction successful. Total slides created: {total_slides}")
-            self.after(0, self.update_preview_ui, formatted_text, total_slides)
+            self.after(0, self.update_preview_ui, formatted_text, total_slides, target_query, artist)
 
         except Exception as error:
             self.logger.write_log("ALERT", f"Critical exception during execution: {str(error)}")
             self.after(0, self.handle_critical_error, str(error))
 
-    def update_preview_ui(self, formatted_text, total_slides):
+    def update_preview_ui(self, formatted_text, total_slides, title, artist):
         self.set_ui_state(False)
         self.txt_preview.config(state="normal")
         self.txt_preview.delete("1.0", tk.END)
@@ -1211,6 +1247,8 @@ class HolyricsApp(tk.Tk):
         self.txt_preview.tag_config("header", foreground="#89b4fa", font=("Consolas", 10, "bold"))
         self.txt_preview.config(state="disabled")
         self.lbl_status.config(text=f"Estado de operación: {total_slides} presentaciones generadas correctamente.")
+
+        self.save_to_history(title, artist, formatted_text, total_slides)
 
         messagebox.showinfo(
             "Proceso completado",
@@ -1245,7 +1283,7 @@ class HolyricsApp(tk.Tk):
                 "Portapapeles vacío",
                 "No se encontró ningún contenido de texto válido en el portapapeles para pegar..."
             )
-            return
+            return False
 
         if not clipboard_content:
             self.logger.write_log("WARNING", "User attempted clipboard paste with empty clipboard content.")
@@ -1253,22 +1291,104 @@ class HolyricsApp(tk.Tk):
                 "Portapapeles vacío",
                 "No se encontró ningún contenido de texto válido en el portapapeles para pegar..."
             )
-            return
-
-        if not self.service.is_youtube_url(clipboard_content):
-            self.logger.write_log("WARNING", f"Clipboard content rejected as invalid YouTube URL: '{clipboard_content}'")
-            messagebox.showwarning(
-                "Enlace no válido",
-                "El contenido copiado no corresponde a un enlace (URL) de YouTube válido.\n\n"
-                "Solo se aceptan enlaces de YouTube. "
-                "¡Verifique el enlace copiado que sea de YouTube e inténtelo nuevamente!"
-            )
-            return
+            return False
 
         self.entry_query.delete(0, tk.END)
         self.entry_query.insert(0, clipboard_content)
         self.logger.write_log("INFO", "Clipboard content pasted successfully into query field.")
         self.lbl_status.config(text="Estado de operación: Enlace pegado desde el portapapeles correctamente.")
+        return True
+
+    def paste_and_process_shortcut(self):
+        if self.is_busy:
+            messagebox.showinfo(
+                "Operación en Curso",
+                "Ya hay una operación en curso. Espere a que finalice antes de iniciar otra."
+            )
+            return
+        if self.paste_from_clipboard():
+            self.start_processing_thread()
+
+    def save_to_history(self, title, artist, formatted_text, total_slides):
+        history = self.app_config.get("search_history", [])
+        history = [item for item in history if not (item.get("title") == title and item.get("artist") == artist)]
+
+        entry = {
+            "title": title,
+            "artist": artist,
+            "formatted_result": formatted_text,
+            "total_slides": total_slides,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        history.insert(0, entry)
+        history = history[:10]
+
+        self.app_config.set("search_history", history)
+        self.refresh_history_menu()
+        self.logger.write_log("INFO", f"Search history updated with new entry: '{title}'")
+
+    def refresh_history_menu(self):
+        self.history_menu.delete(0, "end")
+        history = self.app_config.get("search_history", [])
+
+        if not history:
+            self.history_menu.add_command(label="¡Sin búsquedas recientes!", state="disabled")
+            return
+
+        for entry in history:
+            artist = entry.get("artist", "")
+            title = entry.get("title", "")
+            label = f"🎵 {title} - {artist}" if artist else f"🎵 {title}"
+            self.history_menu.add_command(
+                label=label,
+                command=lambda selected=entry: self.load_from_history(selected)
+            )
+
+        self.history_menu.add_separator()
+        self.history_menu.add_command(label="Borrar historial completo", command=self.clear_search_history)
+
+    def load_from_history(self, entry):
+        if self.is_busy:
+            messagebox.showinfo(
+                "Operación en curso",
+                "Ya hay una operación en curso. Espere a que finalice antes de iniciar otra."
+            )
+            return
+
+        title = entry.get("title", "")
+        artist = entry.get("artist", "")
+        formatted_text = entry.get("formatted_result", "")
+        total_slides = entry.get("total_slides", 0)
+
+        self.entry_query.delete(0, tk.END)
+        self.entry_query.insert(0, title)
+        self.entry_artist.delete(0, tk.END)
+        self.entry_artist.insert(0, artist)
+
+        self.formatted_result = formatted_text
+        self.txt_preview.config(state="normal")
+        self.txt_preview.delete("1.0", tk.END)
+
+        blocks = formatted_text.split("\n\n")
+        for index, block in enumerate(blocks, start=1):
+            self.txt_preview.insert(tk.END, f"--- PRESENTACIÓN {index} ---\n", "header")
+            self.txt_preview.insert(tk.END, f"{block}\n\n")
+
+        self.txt_preview.tag_config("header", foreground="#89b4fa", font=("Consolas", 10, "bold"))
+        self.txt_preview.config(state="disabled")
+        self.lbl_status.config(text=f"Estado de operación: {total_slides} presentaciones cargadas desde el historial.")
+        self.logger.write_log("INFO", f"Loaded search history entry: '{title}'")
+
+    def clear_search_history(self):
+        answer = messagebox.askyesno(
+            "Borrar historial",
+            "¿Está seguro de qué desea borrar todo el historial de búsquedas recientes?"
+        )
+        if not answer:
+            return
+        self.app_config.set("search_history", [])
+        self.refresh_history_menu()
+        self.logger.write_log("INFO", "Search history cleared by user.")
 
     def copy_to_clipboard(self):
         if self.formatted_result:
