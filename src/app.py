@@ -732,7 +732,7 @@ class HolyricsApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.official_version = "v1.0.3-stable"
+        self.official_version = "v1.0.4-stable"
 
         self.logger = ApplicationLogger()
         self.app_config = ConfigurationManager(self.logger)
