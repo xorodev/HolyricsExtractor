@@ -1,0 +1,110 @@
+<!--
+HolyricsExtractor: A lightweight tool to search, extract, and format song lyrics for Holyrics.
+Copyright (C) 2026 @xorodev (CipherCoreDev)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Third-Party Dependencies & Credits:
+- Built with Python (https://www.python.org/)
+- Metadata extraction powered by yt-dlp (https://github.com/yt-dlp/yt-dlp)
+- HTTP requests powered by Requests (https://requests.readthedocs.io)
+- Lyrics API provided by LRCLIB (https://lrclib.net)
+- Graphic Assets & Icons: Created from scratch by @xorodev
+
+GitHub: https://github.com/xorodev/HolyricsExtractor
+Contact:
+a. Email: corex.dev@proton.me
+b. Telegram: https://t.me/xorodev
+-->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://lrclib.net https://www.youtube.com; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#1e1e2e">
+  <meta name="description" content="Busca, extrae y formatea letras de canciones para Holyrics a partir de un enlace de YouTube o del título.">
+  <title>Extractor de Letras para Holyrics</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon.ico" sizes="any">
+  <link rel="stylesheet" href="css/tokens.css?v=1.0.0">
+  <link rel="stylesheet" href="css/base.css?v=1.0.0">
+  <link rel="stylesheet" href="css/layout.css?v=1.0.0">
+  <link rel="stylesheet" href="css/components.css?v=1.0.0">
+  <script type="module" src="js/main.js?v=1.0.0"></script>
+</head>
+<body>
+  <noscript><p class="noscript">Esta aplicación requiere JavaScript habilitado para funcionar.</p></noscript>
+  <div class="app">
+    <header class="panel app-header">
+      <div class="app-header__text">
+        <h1 class="app-title"><span aria-hidden="true">♪</span> Extractor de Letras para Holyrics</h1>
+        <p class="app-subtitle">Ingrese un enlace (URL) de YouTube o el título de la canción para estructurar los versos.</p>
+      </div>
+      <nav class="app-header__controls" aria-label="Acciones principales">
+        <div class="menu" id="history-menu">
+          <button class="btn btn--neutral menu__trigger" type="button" aria-haspopup="menu" aria-expanded="false">Historial</button>
+          <div class="menu__list" role="menu" hidden></div>
+        </div>
+        <div class="menu" id="options-menu">
+          <button class="btn btn--neutral menu__trigger" type="button" aria-haspopup="menu" aria-expanded="false">Opciones</button>
+          <div class="menu__list" role="menu" hidden></div>
+        </div>
+        <button class="btn btn--neutral" id="theme-button" type="button"></button>
+        <button class="btn btn--neutral btn--icon" id="about-button" type="button" aria-label="Acerca de" title="Acerca de">i</button>
+      </nav>
+    </header>
+
+    <main class="workspace">
+      <div class="sidebar">
+      <section class="panel" aria-label="Búsqueda de letras">
+        <form id="search-form" class="form" novalidate autocomplete="off">
+          <label class="field" for="query-input">
+            <span class="field__label">Enlace de YouTube / Título de la Canción:</span>
+            <span class="field__row">
+              <input class="field__input" id="query-input" name="query" type="text" maxlength="300" spellcheck="false" enterkeyhint="search">
+              <button class="btn btn--neutral" id="paste-button" type="button">Pegar enlace</button>
+            </span>
+          </label>
+          <label class="field" for="artist-input">
+            <span class="field__label">Nombre del Artista / Grupo Musical (Opcional):</span>
+            <input class="field__input" id="artist-input" name="artist" type="text" maxlength="120" enterkeyhint="search">
+          </label>
+          <button class="btn btn--primary btn--block btn--large" id="search-button" type="submit">¡Buscar y Formatear Letra!</button>
+          <div class="busy" id="busy-panel" hidden>
+            <div class="progress" role="progressbar" aria-label="Operación en curso"><div class="progress__bar"></div></div>
+            <button class="btn btn--danger btn--small" id="cancel-button" type="button">Cancelar</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel download-panel" aria-labelledby="download-title">
+        <h2 class="download-title" id="download-title">Versión de escritorio</h2>
+        <p class="download-text">Descargue la aplicación para Windows e instálela en su equipo.</p>
+        <a class="btn btn--success btn--block btn--large" id="download-link" href="https://github.com/xorodev/HolyricsExtractor/releases/latest/download/HolyricsExtractor.exe" rel="noopener noreferrer">⬇ Descargar aquí</a>
+      </section>
+      </div>
+
+      <section class="panel preview-panel" aria-label="Resultado">
+        <div class="preview-header">
+          <h2 class="preview-title">Previsualización de los versos:</h2>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="preview" id="preview" tabindex="0" aria-label="Versos generados"></div>
+        <div class="actions">
+          <button class="btn btn--success btn--large" id="copy-button" type="button">¡Copiar resultado!</button>
+          <button class="btn btn--primary btn--large" id="export-button" type="button">¡Exportar resultado!</button>
+          <button class="btn btn--primary btn--icon btn--large" id="help-button" type="button" aria-label="Ayuda y Soporte (F1)" title="Ayuda y Soporte (F1)">?</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+</body>
+</html>
