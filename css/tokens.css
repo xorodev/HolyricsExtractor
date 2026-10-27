@@ -1,0 +1,129 @@
+/*
+HolyricsExtractor: A lightweight tool to search, extract, and format song lyrics for Holyrics.
+Copyright (C) 2026 @xorodev (CipherCoreDev)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Third-Party Dependencies & Credits:
+- Built with Python (https://www.python.org/)
+- Metadata extraction powered by yt-dlp (https://github.com/yt-dlp/yt-dlp)
+- HTTP requests powered by Requests (https://requests.readthedocs.io)
+- Lyrics API provided by LRCLIB (https://lrclib.net)
+- Graphic Assets & Icons: Created from scratch by @xorodev
+
+GitHub: https://github.com/xorodev/HolyricsExtractor
+Contact:
+a. Email: corex.dev@proton.me
+b. Telegram: https://t.me/xorodev
+*/
+:root {
+  color-scheme: dark;
+  --bg: #1e1e2e;
+  --panel: #2b2b3b;
+  --field: #181825;
+  --text: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-faint: #9399b2;
+  --title: #74c7ec;
+  --accent: #89b4fa;
+  --accent-hover: #74c7ec;
+  --accent-text: #11111b;
+  --success: #a6e3a1;
+  --success-hover: #94e2d5;
+  --success-text: #11111b;
+  --danger: #f38ba8;
+  --danger-hover: #eba0ac;
+  --danger-text: #11111b;
+  --warning: #f9e2af;
+  --neutral: #585b70;
+  --neutral-hover: #6c7086;
+  --neutral-text: #cdd6f4;
+  --disabled: #3b3b4f;
+  --border: #45475a;
+  --shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.45);
+  --backdrop: rgb(0 0 0 / 0.6);
+
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  --radius: 0.75rem;
+  --radius-small: 0.5rem;
+  --gap: clamp(0.75rem, 0.5rem + 0.6vw, 1.5rem);
+  --content-max: 110rem;
+
+  --speed: 1;
+  --animations: 1;
+  --fx-hover: 1;
+  --fx-notifications: 1;
+  --fx-windows: 1;
+  --fx-results: 1;
+  --dur-hover: calc(150ms * var(--speed) * var(--animations) * var(--fx-hover));
+  --dur-notifications: calc(220ms * var(--speed) * var(--animations) * var(--fx-notifications));
+  --dur-windows: calc(180ms * var(--speed) * var(--animations) * var(--fx-windows));
+  --dur-results: calc(260ms * var(--speed) * var(--animations) * var(--fx-results));
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eff1f5;
+  --panel: #ffffff;
+  --field: #e6e9ef;
+  --text: #4c4f69;
+  --text-muted: #5c5f77;
+  --text-faint: #656881;
+  --title: #1e66f5;
+  --accent: #1e66f5;
+  --accent-hover: #1a56cc;
+  --accent-text: #ffffff;
+  --success: #2a7d1f;
+  --success-hover: #226618;
+  --success-text: #ffffff;
+  --danger: #d20f39;
+  --danger-hover: #b30c30;
+  --danger-text: #ffffff;
+  --warning: #b45f06;
+  --neutral: #bcc0cc;
+  --neutral-hover: #acb0be;
+  --neutral-text: #4c4f69;
+  --disabled: #ccd0da;
+  --border: #ccd0da;
+  --shadow: 0 0.5rem 1.5rem rgb(76 79 105 / 0.25);
+  --backdrop: rgb(76 79 105 / 0.45);
+}
+
+:root[data-speed='slow'] {
+  --speed: 1.75;
+}
+
+:root[data-speed='fast'] {
+  --speed: 0.55;
+}
+
+:root[data-animations='off'] {
+  --animations: 0;
+}
+
+:root[data-fx-hover='off'] {
+  --fx-hover: 0;
+}
+
+:root[data-fx-notifications='off'] {
+  --fx-notifications: 0;
+}
+
+:root[data-fx-windows='off'] {
+  --fx-windows: 0;
+}
+
+:root[data-fx-results='off'] {
+  --fx-results: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animations: 0;
+  }
+}

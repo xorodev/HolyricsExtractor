@@ -1,0 +1,211 @@
+/*
+HolyricsExtractor: A lightweight tool to search, extract, and format song lyrics for Holyrics.
+Copyright (C) 2026 @xorodev (CipherCoreDev)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Third-Party Dependencies & Credits:
+- Built with Python (https://www.python.org/)
+- Metadata extraction powered by yt-dlp (https://github.com/yt-dlp/yt-dlp)
+- HTTP requests powered by Requests (https://requests.readthedocs.io)
+- Lyrics API provided by LRCLIB (https://lrclib.net)
+- Graphic Assets & Icons: Created from scratch by @xorodev
+
+GitHub: https://github.com/xorodev/HolyricsExtractor
+Contact:
+a. Email: corex.dev@proton.me
+b. Telegram: https://t.me/xorodev
+*/
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: min(100%, var(--content-max));
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: max(var(--gap), env(safe-area-inset-top)) max(var(--gap), env(safe-area-inset-right))
+    max(var(--gap), env(safe-area-inset-bottom)) max(var(--gap), env(safe-area-inset-left));
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+}
+
+.app-header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.app-header__text {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.app-title {
+  color: var(--title);
+  font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.75rem);
+  line-height: 1.2;
+}
+
+.app-subtitle {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.app-header__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.download-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.download-title {
+  font-size: 1rem;
+  text-align: center;
+}
+
+.download-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.preview-title {
+  font-size: 1rem;
+}
+
+.status {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.status[data-kind='busy'] {
+  color: var(--accent);
+}
+
+.status[data-kind='success'] {
+  color: var(--success);
+}
+
+.status[data-kind='warning'] {
+  color: var(--warning);
+}
+
+.status[data-kind='error'] {
+  color: var(--danger);
+}
+
+.preview {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  align-content: start;
+  gap: 0.75rem;
+  min-height: 14rem;
+  padding: 0.75rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--field);
+  border-radius: var(--radius-small);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actions .btn:not(.btn--icon) {
+  flex: 1 1 10rem;
+}
+
+@media (min-width: 60rem) {
+  .workspace {
+    grid-template-columns: clamp(20rem, 28vw, 34rem) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    align-self: start;
+  }
+}
+
+@media (min-width: 60rem) and (min-height: 38rem) {
+  .app {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    max-height: 100%;
+    overflow: auto;
+  }
+
+  .preview {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .app-header__controls {
+    width: 100%;
+  }
+}
